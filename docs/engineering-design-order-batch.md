@@ -76,7 +76,8 @@ PackedBatch
   |- []ItemRow
   |- []byte stringPool
   |- null flags
-  `- output capacity upper bound
+  |- stringsPlain
+  `- exact output size
   |
   | MarshalPacked，一次 cgo 调用
   v
@@ -432,9 +433,9 @@ AVX2 函数单独使用 `__attribute__((target("avx2")))`，整个包不要求�
 `MarshalPacked`：
 
 1. 取得 `RWMutex` 读锁。
-2. 分配输出缓冲区。
+2. 使用 `dirtmake.Bytes` 分配无需预清零、随后会被 native 完整覆盖的输出缓冲区。
 3. 调用 native encoder。
-4. 根据 `written` 截取结果。
+4. 检查 `written` 必须等于 Pack 计算的精确长度。
 
 `Close`：
 

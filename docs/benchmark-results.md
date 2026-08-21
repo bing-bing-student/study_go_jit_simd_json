@@ -23,6 +23,28 @@ $ go run ./cmd/demo -orders 25000
 
 表格使用多轮结果的中位数。耗时越低越好。
 
+## 小白先看这里
+
+比较不同 JSON 库时，只比较“端到端”结果。端到端表示从 Go 对象开始，到得到最终 JSON 字节为止。
+
+项目内部还有两个阶段：
+
+```text
+Pack：          把 Go 对象转换为 C ABI
+MarshalPacked：使用已经 Pack 的数据执行 native 编码
+```
+
+它们用于定位瓶颈，不能单独替代完整序列化成绩。例如预打包 JIT 的 `11.62 ms` 没有包含 Pack，不能直接与 Sonic 的 `24.64 ms` 比较。
+
+指标含义：
+
+| 指标 | 含义 | 判断方式 |
+| --- | --- | --- |
+| `ms/op` | 每次序列化耗时 | 越低越好 |
+| `MB/s` | 每秒处理的数据量 | 越高越好 |
+| `B/op` | 每次操作分配的字节数 | 通常越低越好 |
+| `allocs/op` | 每次操作发生的内存分配次数 | 通常越低越好 |
+
 ## 真实业务数据
 
 文件：`testdata/orders.json`
@@ -51,7 +73,11 @@ trackingNo 为 null：  3,627
 
 所有实现的输出均已与 `encoding/json` 逐字节比较。文件读取、JSON 解析、首次缓存和首次 JIT 编译不在计时区间。
 
-以下结果是固定 `GOMAXPROCS=8`、每组 2 秒、运行 5 轮后的中位数：
+以下结果是固定 `GOMAXPROCS=8`、每组 2 秒、运行 5 轮后的中位数。
+
+### 端到端对比
+
+这些结果可以用于不同 JSON 库之间的公平比较：
 
 | 路径 | ms/op | MB/s | B/op | allocs/op |
 | --- | ---: | ---: | ---: | ---: |
@@ -61,6 +87,13 @@ trackingNo 为 null：  3,627
 | jitjson JIT auto + Pack，严格 UTF-8 | 25.60 | 303.37 | 7,774,421 | 2 |
 | JSON Iterator | 33.24 | 233.64 | 7,774,428 | 2 |
 | `encoding/json` | 35.48 | 218.89 | 7,774,425 | 2 |
+
+### 内部阶段
+
+这些结果用于分析 jitjson 内部成本，不能直接作为完整库性能：
+
+| 路径 | ms/op | MB/s | B/op | allocs/op |
+| --- | ---: | ---: | ---: | ---: |
 | jitjson Pack only | 17.48 | 444.38 | 5,365,858 | 4 |
 | jitjson static auto，预打包 | 11.06 | 702.34 | 7,774,219 | 2 |
 | jitjson JIT scalar，预打包 | 11.29 | 687.78 | 7,774,218 | 2 |
@@ -102,7 +135,6 @@ Sonic loader 与 `GOEXPERIMENT=cgocheck2` 不兼容，因此外部库对比放�
 | 路径 | ns/op | B/op | allocs/op |
 | --- | ---: | ---: | ---: |
 | `encoding/json` | 166,502 | 41,072 | 2 |
-| 纯 Go reference | 123,642 | 40,960 | 1 |
 | `Pack` | 83,361 | 29,920 | 4 |
 | static scalar | 84,160 | 40,968 | 2 |
 | JIT scalar | 82,757 | 40,968 | 2 |

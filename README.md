@@ -13,6 +13,23 @@ Go API
 
 项目已经完成可运行版本，不是 `encoding/json` 的通用替代品。当前只编码固定的订单批次结构，以便把重点放在 cgo ABI、JIT、SIMD、内存安全和性能验证上。
 
+## 第一次阅读
+
+第一次接触 JIT、SIMD 或 cgo 时，不需要先理解完整工程设计。建议按下面的顺序阅读：
+
+1. [小白阅读指南](docs/beginner-guide.md)：理解一次 `Marshal` 的完整数据流和性能表。
+2. 运行 `go run ./cmd/demo`：先看到程序正确工作。
+3. [Benchmark 结果](docs/benchmark-results.md)：理解端到端与内部阶段的区别。
+4. [最终工程设计](docs/engineering-design-order-batch.md)：最后再看 ABI、机器码和生命周期。
+
+先记住三个结论：
+
+```text
+Marshal = Pack + native 编码
+JIT 已真正生成机器码，但当前主要编排 C helper
+真实订单都是短字符串，所以真实数据性能提升不是 SIMD 带来的
+```
+
 ## 支持范围
 
 运行环境：
@@ -300,8 +317,9 @@ JIT TrustUTF8 端到端
 
 ## 文档
 
-- [最终工程设计](docs/engineering-design-order-batch.md)
+- [小白阅读指南](docs/beginner-guide.md)：从零理解数据流、JIT、SIMD 和性能表
 - [Benchmark 结果](docs/benchmark-results.md)
+- [最终工程设计](docs/engineering-design-order-batch.md)
 - [工程实践评估](docs/assessment.md)
 - [订单数据结构](docs/order-schema-proposal.md)
 - [已归档的早期单 Record 设计](docs/engineering-design-cgo.md)
